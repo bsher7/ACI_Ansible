@@ -1,0 +1,22 @@
+---
+
+- name: Configure Login Banner in ACI
+  hosts: POD19
+  gather_facts: no
+  collections: cisco.aci
+  vars:
+    login: &login_info
+      hostname: "{{ aci_host }}"
+      username: "{{ aci_user }}"
+      password: "{{ aci_password }}"
+      validate_certs: no
+
+  tasks:
+    - name: Configure GUI Banner
+      aci_system_banner:
+        <<: *login_info
+        gui_banner: "NO INTRUSIVE TEST ON THIS POD WITHOUT CHECKING WITH THE TEAM"
+        state: present
+      delegate_to: localhost
+      register: query_result
+    

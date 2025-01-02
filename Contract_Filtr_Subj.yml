@@ -1,0 +1,69 @@
+---
+- name: create contract with filter and subject
+  hosts: POD19
+  connection: local
+  collections: cisco.aci
+  gather_facts: no
+  vars:
+    tenant_name: "PROD_BRU"
+    contract_name: "WebServices"
+    contract_subject: "WebTraffic"
+    filter_name: "WebFilter"
+    filter_entries:
+    - name: "HTTP"
+      protocol: "tcp"
+      ports: "80"
+    - name: "HTTPS"
+      protocol: "tcp"
+      ports: "443"
+    - name: "ICMP"
+      protocol: "icmp"
+      ports: null
+
+    login: &login_info
+      hostname: "{{ aci_host }}"
+      username: "{{ aci_user }}"
+      password: "{{ aci_password}}"
+      validate_certs: no
+  tasks:
+  - name: Create a contract
+    tags: vzBrCP
+    aci_contract:
+      <<: *login_info
+      tenant: "{{ tenant_name }}"
+      contract: "{{ contract_name }}"
+  - name: Create a Filter
+    tags: vzFilter
+    aci_filter:
+      <<: *login_info
+      tenant: "{{ tenant_name }}"
+      filter: "{{ filter_name }}"
+  - name: Add Filter Entry
+    tags: vzEntry
+    aci_filter_entry:
+      <<: *login_info
+      tenant: "{{ tenant_name }}"
+      filter: "{{ filter_name }}"
+      entry: "{{ item.name }}"
+      ip_protocol: "{{ item.protocol }}"
+      ether_type: "ip"
+      dst_port_start: "{{ item.ports if item.ports is not none else 'unspecified' }}"   #unspecified for None, as I checked the valid labels from ACI MIT documentation
+      dst_port_end: "{{ item.ports if item.ports is not none else 'unspecified' }}"
+    loop: "{{ filter_entries }}"
+  - name: Create Subject
+    tags: vzSubj
+    aci_contract_subject:
+      <<: *login_info
+      tenant: "{{ tenant_name }}"
+      contract: "{{ contract_name }}"
+      subject: "{{ contract_subject }}" 
+  - name: Bind Filters with Contract Subject
+    tags: RsSubjFiltAtt
+    aci_contract_subject_to_filter:
+      <<: *login_info
+      tenant: "{{ tenant_name }}"
+      contract: "{{ contract_name }}"
+      subject: "{{ contract_subject }}"      
+      filter: "{{ filter_name }}"
+      action: "permit"
+

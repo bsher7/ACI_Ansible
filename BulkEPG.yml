@@ -1,0 +1,60 @@
+---
+
+- name: Configure Bulk EPG for Lab Repro
+  hosts: POD19
+  connection: local
+  collections: cisco.aci
+  gather_facts: no
+  vars:
+    tenant_name : "PROD_BRU"
+    AP: "Live_BRU"
+    EPG_PREFIX: "EPG_"
+    contract_name: "Live_BRU_Ctr"
+    login: &login_info
+      host: "{{ aci_host }}"
+      username: "{{ aci_user }}"
+      password: "{{ aci_password }}"
+      validate_certs: no
+  tasks:
+    - name: Configure an AP
+      tags: fvAp
+      aci_ap:
+        <<: *login_info
+        tenant: "{{ tenant_name }}"
+        ap: "{{ AP }}"
+      delegate_to: localhost        
+    - name: Configure 10 EPGs
+      tags: fvAEPg
+      aci_epg:
+        <<: *login_info
+        tenant: "{{ tenant_name }}"
+        ap: "{{ AP }}"
+        epg: "{{ EPG_PREFIX }}{{ item }}"
+        state: present
+      delegate_to: localhost
+      loop: "{{ range(1,11) | list }}"
+    - name: Provide contract to Bulk EPGs except first one
+      tags: RsProv
+      aci_epg_to_contract:
+        <<: *login_info
+        tenant: "{{ tenant_name }}"
+        ap: "{{ AP }}"
+        epg: "{{ EPG_PREFIX }}{{ item }}"
+        contract: "{{ contract_name }}"
+        contract_type: provider
+        state: present
+      delegate_to: localhost
+      loop: "{{ range(2,11) | list }}"
+    - name: Consume contract at First EPG
+      tags: RsCons
+      aci_epg_to_contract:
+        <<: *login_info
+        tenant: "{{ tenant_name }}"
+        ap: "{{ AP }}"
+        epg: "{{ EPG_PREFIX }}{{ item }}"
+        contract: "{{ contract_name }}"
+        contract_type: consumer
+        state: present
+      delegate_to: localhost
+      loop: "{{ [1] }}"
+

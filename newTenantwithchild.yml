@@ -1,0 +1,96 @@
+---
+- name: Configure Cisco ACI
+  hosts: POD19
+  connection: local
+  gather_facts: no
+  collections:
+    - cisco.aci
+
+  vars:
+    tenant_name: "BSHER_ANSIBLE"
+    vrf_name: "BSHER1"
+    bd_name: "Services"
+    app_profile: "Services_AP"
+    contract_name: "app_ctr1"
+    subject_name: "subj_1"
+    epgs:
+      - WEB
+      - APP
+
+  tasks:
+    - name: Create Tenant
+      aci_tenant:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        validate_certs: no
+        tenant: "{{ tenant_name }}"
+        state: query
+      delegate_to: localhost
+      register: query_result
+
+    - name: Create VRF
+      aci_vrf:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        validate_certs: no
+        tenant: "{{ tenant_name }}"
+        vrf: "{{ vrf_name }}"
+        state: present
+
+    - name: Create Bridge Domain
+      aci_bd:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        validate_certs: no
+        tenant: "{{ tenant_name }}"
+        bd: "{{ bd_name }}"
+        vrf: "{{ vrf_name }}"
+        arp_flooding: yes
+        state: present
+
+    - name: Create Contract
+      aci_contract:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        validate_certs: no
+        tenant: "{{ tenant_name }}"
+        contract: "{{ contract_name }}"
+        state: present
+
+    - name: Create Subject for Contract
+      aci_contract_subject:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        validate_certs: no
+        tenant: "{{ tenant_name }}"
+        contract: "{{ contract_name }}"
+        subject: "{{ subject_name }}"
+        state: present
+
+    - name: Create Application Profile
+      aci_ap:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        validate_certs: no
+        tenant: "{{ tenant_name }}"
+        ap: "{{ app_profile }}"
+        state: present
+
+    - name: Create EPGs
+      loop: "{{ epgs }}"
+      aci_epg:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ansible_user }}"
+        password: "{{ ansible_password }}"
+        validate_certs: no
+        tenant: "{{ tenant_name }}"
+        ap: "{{ app_profile }}"
+        epg: "{{ item }}"
+        bd: "{{ bd_name }}"
+        state: present
